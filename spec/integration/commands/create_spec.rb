@@ -7,15 +7,6 @@ describe 'Commands / Create' do
   subject(:users) { rom.commands.users }
 
   before do
-    class User
-      include Virtus.value_object(coerce: true)
-
-      values do
-        attribute :id, Integer
-        attribute :name, String
-      end
-    end
-
     class Params
       include Virtus.model
 
@@ -38,48 +29,47 @@ describe 'Commands / Create' do
     end
 
     setup.relation(:users)
-    setup.mappers { define(:users) { model User } }
   end
 
   context '#transaction' do
     it 'create record if nothing was raised' do
-      users.create.transaction {
+      result = users.create.transaction {
         users.create.call(name: 'Jane')
       }
 
-      expect(rom.read(:users).one.to_h).to eq(id: 1, name: 'Jane')
+      expect(result.value).to eq(id: 1, name: 'Jane')
     end
 
     it 'allows for nested transactions' do
-      users.create.transaction {
+      result = users.create.transaction {
         users.create.transaction {
           users.create.call(name: 'Jane')
         }
       }
 
-      expect(rom.read(:users).one.to_h).to eq(id: 1, name: 'Jane')
+      expect(result.value.value).to eq(id: 1, name: 'Jane')
     end
 
     it 'create nothing if anything was raised' do
-      users.create.transaction(rollback: :always) {
+      result = users.create.transaction(rollback: :always) {
         users.create.call(name: 'Jane')
       }
 
-      expect(rom.read(:users).to_a).to be_empty
+      expect(result.value).to be_nil
     end
 
     it 'create nothing if anything was raised in any nested transaction' do
       expect {
-        users.create.transaction {
-          users.create.call(name: 'John')
+        expect {
           users.create.transaction {
-            users.create.call(name: 'Jane')
-            raise Exception
+            users.create.call(name: 'John')
+            users.create.transaction {
+              users.create.call(name: 'Jane')
+              raise Exception
+            }
           }
-        }
-      }.to raise_error(Exception)
-
-      expect(rom.read(:users).to_a).to be_empty
+        }.to raise_error(Exception)
+      }.to_not change { rom.relations.users.count }
     end
   end
 

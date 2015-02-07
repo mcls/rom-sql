@@ -29,11 +29,11 @@ describe 'Commands / Update' do
 
   context '#transaction' do
     it 'update record if there was no errors' do
-      users.update.transaction do
+      result = users.update.transaction do
         users.update.by_id(piotr[:id]).set(peter)
       end
 
-      expect(relation.first[:name]).to eq('Peter')
+      expect(result.value).to eq([{ id: 1, name: 'Peter' }])
     end
 
     it 'updates nothing if error was raised' do

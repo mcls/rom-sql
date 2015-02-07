@@ -36,7 +36,7 @@ describe 'Commands / Delete' do
           users.delete.by_name('Jane').call
           raise ROM::SQL::Rollback
         end
-      }.to change { rom.relations.users.count }.by(0)
+      }.to_not change { rom.relations.users.count }
     end
   end
 
