@@ -7,6 +7,15 @@ describe 'Commands / Create' do
   subject(:users) { rom.commands.users }
 
   before do
+    class User
+      include Virtus.value_object(coerce: true)
+
+      values do
+        attribute :id, Integer
+        attribute :name, String
+      end
+    end
+
     class Params
       include Virtus.model
 
@@ -26,6 +35,51 @@ describe 'Commands / Create' do
       define(:create_many, type: :create) do
         result :many
       end
+    end
+
+    setup.relation(:users)
+    setup.mappers { define(:users) { model User } }
+  end
+
+  context '#transaction' do
+    it 'create record if nothing was raised' do
+      users.create.transaction {
+        users.create.call(name: 'Jane')
+      }
+
+      expect(rom.read(:users).one.to_h).to eq(id: 1, name: 'Jane')
+    end
+
+    it 'allows for nested transactions' do
+      users.create.transaction {
+        users.create.transaction {
+          users.create.call(name: 'Jane')
+        }
+      }
+
+      expect(rom.read(:users).one.to_h).to eq(id: 1, name: 'Jane')
+    end
+
+    it 'create nothing if anything was raised' do
+      users.create.transaction(rollback: :always) {
+        users.create.call(name: 'Jane')
+      }
+
+      expect(rom.read(:users).to_a).to be_empty
+    end
+
+    it 'create nothing if anything was raised in any nested transaction' do
+      expect {
+        users.create.transaction {
+          users.create.call(name: 'John')
+          users.create.transaction {
+            users.create.call(name: 'Jane')
+            raise Exception
+          }
+        }
+      }.to raise_error(Exception)
+
+      expect(rom.read(:users).to_a).to be_empty
     end
   end
 

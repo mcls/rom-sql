@@ -81,7 +81,7 @@ describe 'MigrationTasks' do
 
         expect {
           Rake::Task["db:create_migration"].execute(Rake::TaskArguments.new(
-            [:name], [name]))
+                                                      [:name], [name]))
         }.to output(path+"\n").to_stdout
       end
 
@@ -91,7 +91,7 @@ describe 'MigrationTasks' do
 
         expect {
           Rake::Task["db:create_migration"].execute(Rake::TaskArguments.new(
-            [:name, :version], [name, version]))
+                                                      [:name, :version], [name, version]))
         }.to output(path+"\n").to_stdout
       end
     end
